@@ -108,8 +108,12 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 
 			temp->deepness -= 1;
 			if (temp->deepness == 0)
+			{
+				temp->temp_vars_types.clear();
 				temp->context = Temp::Context::GlobalScope;
+			}	
 
+			temp->is_struct.resize(temp->vars_at_id.back());
 			temp->vars_at_id.erase(temp->vars_at_id.end() - 1);
 
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
@@ -158,13 +162,16 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
 			std::string str;
-			switch (temp->shader_type)
-			{
-			case Temp::ShaderType::VertexShader:
-				str = "gl_Position = "; break;
-			case Temp::ShaderType::PixelShader:
-				str = "FragColor = "; break;
-			} 
+			if (temp->context == Temp::Context::CustomFunction)
+				str = "return ";
+			else
+				switch (temp->shader_type)
+				{
+				case Temp::ShaderType::VertexShader:
+					str = "gl_Position = "; break;
+				case Temp::ShaderType::PixelShader:
+					str = "FragColor = "; break;
+				} 
 			return { binary_to_glsl_conversion_exception::LoadMathExpression, {str.begin(), str.end()} };
 		}
 	});
@@ -185,11 +192,14 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			}
 			else
 			{
+				temp->temp_vars_types.push_back(in[0]);
 				std::string str;
-				str += version->types_code_names.at(in[0]);
+				str += ((in[0] < version->types_code_names.size()) ?
+					version->types_code_names[in[0]] :
+					"s" + (std::to_string(in[0] - version->types_code_names.size())));
 				str += " v" + std::to_string(temp->vars_at_id.back());
 				temp->vars_at_id.back()++;
-				temp->is_struct.push_back(in[0] < version->types_code_names.size());
+				temp->is_struct.push_back(in[0] >= version->types_code_names.size());
 				return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 			}
 		}
@@ -200,11 +210,14 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		[version](std::vector<uint8_t>& in, Temp* temp)
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
+			temp->temp_vars_types.push_back(in[0]);
 			std::string str;
-			str += version->types_code_names.at(in[0]);
+			str += ((in[0] < version->types_code_names.size()) ?
+				version->types_code_names[in[0]] :
+				"s" + (std::to_string(in[0] - version->types_code_names.size())));
 			str += " v" + std::to_string(temp->vars_at_id.back()) + '=';
 			temp->vars_at_id.back()++;
-			temp->is_struct.push_back(in[0] < version->types_code_names.size());
+			temp->is_struct.push_back(in[0] >= version->types_code_names.size());
 			return { binary_to_glsl_conversion_exception::LoadLiteral, {str.begin(), str.end()} };
 		}
 	});
@@ -214,11 +227,14 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		[version](std::vector<uint8_t>& in, Temp* temp)
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
+			temp->temp_vars_types.push_back(in[0]);
 			std::string str;
-			str += version->types_code_names.at(in[0]);
+			str += ((in[0] < version->types_code_names.size()) ?
+				version->types_code_names[in[0]] :
+				"s" + (std::to_string(in[0] - version->types_code_names.size())));
 			str += " v" + std::to_string(temp->vars_at_id.back()) + '=';
 			temp->vars_at_id.back()++;
-			temp->is_struct.push_back(in[0] < version->types_code_names.size());
+			temp->is_struct.push_back(in[0] >= version->types_code_names.size());
 			return { binary_to_glsl_conversion_exception::LoadMathExpression, {str.begin(), str.end()} };
 		}
 	});
@@ -240,7 +256,22 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
 	});
-	version->glsl_signatures_alternatives.push_back({ false, 0, Insert("BYP") });
+
+	//?t ?n ?f
+	version->glsl_signatures_alternatives.push_back({ false, 1, 
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			temp->write_target = Temp::WriteTarget::Common;
+			temp->context = Temp::Context::CustomFunction;
+			temp->deepness = 1;
+			temp->vars_at_id.push_back(temp->vars_at_id.back());
+			temp->function_return_types.push_back(ReturnType(in[0]));
+			std::string str = version->types_code_names.at(in[0]) + " f" + std::to_string(temp->FuncCounter);
+			temp->FuncCounter++;
+			return { binary_to_glsl_conversion_exception::FunctionHeader, {str.begin(), str.end()} };
+		}	
+	});
 
 	//using layout ?t
 	version->glsl_signatures_alternatives.push_back({ false , 1,
@@ -248,7 +279,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
 			temp->write_target = Temp::WriteTarget::Vertex;
-
+			temp->vertex_layout_type = in[0];
 			//Basic type like int, float etc
 			if (in[0] < version->types_code_names.size())
 			{
@@ -256,6 +287,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				std::string str = "layout (location = 0) in ";
 				str += version->types_code_names.at(in[0]) + " i0" + ';';
 				temp->vertex_variables = 1;
+				temp->vertex_vars_types.push_back(in[0]);
 				return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 			}
 			//Struct
@@ -268,11 +300,11 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				std::vector<char> result;
 				for (i = 0; i < temp->structs.at(in[0] - version->types_code_names.size()).size(); i++)
 				{
+					int type = temp->structs.at(in[0] - version->types_code_names.size()).at(i);
 					std::string str = "layout (location = " + std::to_string(i) + ") in ";
-					str += version->types_code_names.at(
-						temp->structs.at(in[0] - version->types_code_names.size()).at(i)
-					) + " i" + std::to_string(i) + ';';
+					str += version->types_code_names.at(type) + " i" + std::to_string(i) + ';';
 					temp->vertex_variables++;
+					temp->vertex_vars_types.push_back(type);
 					result.insert(result.end(), str.begin(), str.end());
 				}
 				return { binary_to_glsl_conversion_exception::None, result };
@@ -286,10 +318,13 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
 			temp->write_target = Temp::WriteTarget::Common;
+			//To do: uniform structs
 			std::string str = "uniform " + version->types_code_names.at(in[0]) + " v" 
 				+ std::to_string(temp->vars_at_id.back());
 			temp->vars_at_id.at(0)++;
 			temp->uniforms_types.push_back(in[0]);
+			//To do extern structs
+			temp->is_struct.push_back(0);
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
 	});

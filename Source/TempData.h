@@ -1,4 +1,5 @@
 #pragma once
+#include "ReturnDataType.h"
 
 struct Temp
 {
@@ -21,7 +22,6 @@ struct Temp
 	ShaderType shader_type = ShaderType::None;
 	WriteTarget write_target = WriteTarget::Common;
 
-
 	/*
 		Each value represents variables count at given deepness
 		so vars_at_id[2] is count of vars at deepness 2
@@ -43,8 +43,13 @@ struct Temp
 		because othervise if vars_at_id.at(1) equals 0 variables names will interfere
 	*/
 	int vertex_variables = 0;
+	std::vector<int> vertex_vars_types;
 
 	std::vector<int> uniforms_types;
+
+	std::vector<int> temp_vars_types;
+
+	std::vector<int> sent_vars_types;
 
 	int deepness = 0;
 
@@ -63,7 +68,16 @@ struct Temp
 
 	int SentCounter = 0;
 
+	int FuncCounter = 0;
+
 	std::vector<int> catched_values_ids;
 
+	//id is function id, value is ammount of args
+	std::vector<int> function_args_count;
+	std::vector<ReturnType> function_return_types;
+	std::vector<std::vector<ReturnType>> function_args_types;
+
 	bool vertex_layout_is_struct = false;
+
+	int vertex_layout_type = -1;
 };

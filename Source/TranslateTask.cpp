@@ -51,19 +51,66 @@ void TranslationTask::Start(void* source, int size)
 			break;
 		case binary_to_glsl_conversion_exception::Send:
 		{
-			//+1
-			std::string str = "out " + version->types_code_names[*(++iterator)] + 
+			int type = *(iterator++);
+			std::string type_name = ((type < version->types_code_names.size()) ?
+				version->types_code_names[type] :
+				"s" + (std::to_string(type - version->types_code_names.size())));
+
+			std::string str = "out " + type_name +
 				" p" + std::to_string(temp->SentCounter) + ';';
 			temp->SentCounter++;
+			temp->sent_vars_types.push_back(type);
 			write_target->insert(write_target->begin(), str.begin(), str.end());
 			exception_result = LoadMathExpression(iterator, version.get(), temp);
 			break;
 		}			
 		case binary_to_glsl_conversion_exception::Catch:
-			std::string str = "in " + version->types_code_names[*(++iterator)] +
-				" p" + std::to_string(*(++iterator)) + ';';
+		{
+			std::string type_name = ((*iterator < version->types_code_names.size()) ?
+				version->types_code_names[*iterator] :
+				"s" + (std::to_string(*iterator - version->types_code_names.size())));
+
+			temp->is_struct.push_back(*iterator >= version->types_code_names.size());
+			std::string str = "in " + type_name + " p" + std::to_string(*(iterator + 1)) + ';';
+
+			iterator += 2;
 			write_target->insert(write_target->begin(), str.begin(), str.end());
 			break;
+		}		
+		case binary_to_glsl_conversion_exception::FunctionHeader:
+		{
+			exception_result.push_back('(');
+			int args_count = *iterator;
+			temp->function_args_types.push_back({});
+			for (int i = 0; i < args_count; i++)
+			{
+				if (i != 0)
+					exception_result.push_back(',');
+				++iterator;
+				std::string arg = ((*iterator < version->types_code_names.size()) ?
+					version->types_code_names[*iterator] :
+					"s" + (std::to_string(*iterator - version->types_code_names.size())))
+					+ " v" + std::to_string(i + temp->vars_at_id.back());
+
+				ReturnType r_type;
+				switch (*iterator)
+				{
+				case 0:  r_type = ReturnType::Int;   break;
+				case 1:  r_type = ReturnType::Float; break;
+				default: r_type = ReturnType::Other; break;
+				}
+
+				temp->function_args_types.back().push_back(r_type);
+				temp->temp_vars_types.push_back(*iterator);
+				temp->is_struct.push_back(*iterator >= version->types_code_names.size());
+				exception_result.insert(exception_result.end(), arg.begin(), arg.end());
+			}
+			exception_result.push_back(')');
+			exception_result.push_back('{');
+			temp->function_args_count.push_back(args_count);
+			++iterator;
+			break;
+		}
 		}
 
 		write_target->insert(write_target->end(), exception_result.begin(), exception_result.end());
