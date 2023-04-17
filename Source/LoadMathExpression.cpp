@@ -8,7 +8,7 @@ struct Node
 {
 	enum class Type
 	{
-		Variable, BasicMathOperator, Literal, Function, VecConstructor, GetOperator
+		Variable, BasicMathOperator, Literal, Function, VecConstructor, GetOperator, ArrayGet
 	} type = Type::Literal;
 
 	ReturnType r_type = ReturnType::Other;
@@ -33,6 +33,7 @@ struct Node
 			case 6: content = { 'v','e','c','3' }; break;
 			case 7: content = { 'v','e','c','4' }; break;
 			case 8: type = Type::GetOperator; break;
+			case 9: type = Type::ArrayGet; break;
 			}
 			next_owned = *iterator < 5 ? 2 : *iterator - 3;
 			if (type == Type::GetOperator)
@@ -120,14 +121,16 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 			int id = *iterator;
 			if (*(iterator - 1) >= 128)
 			{
+				//Vertex built in var in Vertex Shader
 				if (*(iterator - 1) == 128 &&
 					temp->vertex_layout_is_struct && temp->shader_type == Temp::ShaderType::VertexShader)
 				{
 					node->content.clear();
-						auto var_id = std::string("i") + std::to_string(id);
-						node->content.insert(node->content.end(), var_id.begin(), var_id.end());
-						node->r_type = ReturnType::Float;
+					auto var_id = std::string("i") + std::to_string(id);
+					node->content.insert(node->content.end(), var_id.begin(), var_id.end());
+					node->r_type = ReturnType::Float;
 				}
+				//Structs
 				else if
 					(
 						(temp->context == Temp::Context::CustomFunction &&
@@ -159,6 +162,21 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 			}
 
 			++iterator;
+		}
+		else if (node->type == Node::Type::ArrayGet)
+		{
+			//Array var
+			node = get_node();
+
+			std::string var_id;
+			var_id.insert(var_id.begin(), node->content.begin() + 1, node->content.end());
+
+			node->content.push_back('[');
+			auto id_node = get_node();
+			node->content.insert(node->content.end(), id_node->content.begin(), id_node->content.end());
+			node->content.push_back(']');
+			
+			own_requested = 0;
 		}
 
 		for (int j = 0; j < own_requested; j++)

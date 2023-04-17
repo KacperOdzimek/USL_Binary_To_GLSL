@@ -51,6 +51,8 @@ struct Temp
 
 	std::vector<int> sent_vars_types;
 
+	std::vector<int> arrays_ids;
+
 	int deepness = 0;
 
 	/*

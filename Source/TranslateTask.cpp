@@ -73,6 +73,9 @@ void TranslationTask::Start(void* source, int size)
 			temp->is_struct.push_back(*iterator >= version->types_code_names.size());
 			std::string str = "in " + type_name + " p" + std::to_string(*(iterator + 1)) + ';';
 
+			temp->temp_vars_types.push_back(*iterator);
+			temp->is_struct.push_back(0);
+
 			iterator += 2;
 			write_target->insert(write_target->begin(), str.begin(), str.end());
 			break;
@@ -105,10 +108,27 @@ void TranslationTask::Start(void* source, int size)
 				temp->is_struct.push_back(*iterator >= version->types_code_names.size());
 				exception_result.insert(exception_result.end(), arg.begin(), arg.end());
 			}
+
 			exception_result.push_back(')');
 			exception_result.push_back('{');
 			temp->function_args_count.push_back(args_count);
 			++iterator;
+			break;
+		}
+		case binary_to_glsl_conversion_exception::ArrayLiteral:
+		{
+			std::vector<uint8_t> size_as_bin = { *(iterator - 1), *(iterator - 2), *(iterator - 3), *(iterator - 4) };
+			int arr_size; memcpy(&arr_size, &(*size_as_bin.begin()), 4);
+
+			exception_result.push_back('(');
+			for (int i = 0; i < arr_size; i++)
+			{
+				auto r = LoadMathExpression(iterator, version.get(), temp);
+				exception_result.insert(exception_result.end(), r.begin(), r.end());
+				if (i + 1 != arr_size)
+					exception_result.push_back(',');
+			}
+			exception_result.push_back(')');
 			break;
 		}
 		}

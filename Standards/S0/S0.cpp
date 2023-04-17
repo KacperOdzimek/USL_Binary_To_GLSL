@@ -28,7 +28,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 {
 	StandardVersion* version = new StandardVersion;
 
-	version->types_code_names = {"int", "float", "vec2", "vec3", "vec4"};
+	version->types_code_names = {"int", "float", "vec2", "vec3", "vec4", "array_error"};
 
 #define Insert(text) [](std::vector<uint8_t>& in, Temp* temp)													\
 	-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>										\
@@ -110,6 +110,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			if (temp->deepness == 0)
 			{
 				temp->temp_vars_types.clear();
+				temp->arrays_ids.clear();
 				temp->context = Temp::Context::GlobalScope;
 			}	
 
@@ -236,6 +237,51 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			temp->vars_at_id.back()++;
 			temp->is_struct.push_back(in[0] >= version->types_code_names.size());
 			return { binary_to_glsl_conversion_exception::LoadMathExpression, {str.begin(), str.end()} };
+		}
+	});
+
+	//?t ?n [ ?i ]
+	version->glsl_signatures_alternatives.push_back({ true, 5,
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			std::string str;
+			str += ((in[0] < version->types_code_names.size()) ?
+				version->types_code_names[in[0]] :
+				"s" + (std::to_string(in[0] - version->types_code_names.size())));
+			auto arr_size_as_bin = version->literal_decoding_functions.at(0).func(&in[1]);
+			str += " v" + std::to_string(temp->vars_at_id.back()) + '[';
+			str.insert(str.end(), arr_size_as_bin.begin(), arr_size_as_bin.end());
+			str += ']';
+
+			temp->arrays_ids.push_back(temp->vars_at_id.back());
+			temp->vars_at_id.back()++;
+			temp->temp_vars_types.push_back(6);
+
+			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
+		}
+	});
+
+	//?t ?n [ ?i ] = ?a
+	version->glsl_signatures_alternatives.push_back({ true, 5,
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			std::string str;
+			auto type = ((in[0] < version->types_code_names.size()) ?
+				version->types_code_names[in[0]] :
+				"s" + (std::to_string(in[0] - version->types_code_names.size())));
+			str += type;
+			auto arr_size_as_bin = version->literal_decoding_functions.at(0).func(&in[1]);
+			str += " v" + std::to_string(temp->vars_at_id.back()) + '[';
+			str.insert(str.end(), arr_size_as_bin.begin(), arr_size_as_bin.end());
+			str += "] = " + type + "[]";
+
+			temp->arrays_ids.push_back(temp->vars_at_id.back());
+			temp->vars_at_id.back()++;
+			temp->temp_vars_types.push_back(6);
+
+			return { binary_to_glsl_conversion_exception::ArrayLiteral, {str.begin(), str.end()} };
 		}
 	});
 
