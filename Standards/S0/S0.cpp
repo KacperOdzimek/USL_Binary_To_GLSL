@@ -375,6 +375,24 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		}
 	});
 
+	//Bypass; TO DO
+	version->glsl_signatures_alternatives.push_back({true, 0,
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			return { binary_to_glsl_conversion_exception::None, {} };
+		}
+	});
+
+	//Bypass; TO DO
+	version->glsl_signatures_alternatives.push_back({ true, 0,
+	[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			return { binary_to_glsl_conversion_exception::None, {} };
+		}
+	});
+
 	//send ?t ?n = ?e
 	version->glsl_signatures_alternatives.push_back({ true , 0,
 		[version](std::vector<uint8_t>& in, Temp* temp)
