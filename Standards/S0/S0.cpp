@@ -24,6 +24,25 @@ std::string decode_int(uint8_t* ptr)
 	return str;
 }
 
+std::string gen_geometry_output_layout_line(Temp*& temp)
+{
+	std::string str;
+	if (temp->geometry_shader_output_primitive_id != -1)
+	{
+		str += "layout(";
+		switch (temp->geometry_shader_output_primitive_id)
+		{
+		case 0: str += "points"; break;
+		case 1: str += "line_strip"; break;
+		case 2: str += "triangle_strip"; break;
+		}
+		str += ", max_vertices = ";
+		str += std::to_string(temp->geometry_shader_vertices_limit);
+		str += ") out;";
+	}
+	return str;
+}
+
 std::unique_ptr<StandardVersion> Standards::S0Create()
 {
 	StandardVersion* version = new StandardVersion;
@@ -157,6 +176,22 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		}
 	});
 
+	//PixelShader
+	version->glsl_signatures_alternatives.push_back({ false, 0,
+		[](std::vector<uint8_t>& in, Temp* temp)
+		-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			temp->context = Temp::Context::Shader;
+			temp->shader_type = Temp::ShaderType::GeometryShader;
+			temp->write_target = Temp::WriteTarget::Geometry;
+			temp->deepness = 1;
+			temp->vars_at_id.push_back(temp->vars_at_id.back());
+
+			std::string str = "void main() {";
+			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
+		}
+	});
+
 	//return ?e
 	version->glsl_signatures_alternatives.push_back({ true, 0,
 		[](std::vector<uint8_t>& in, Temp* temp)
@@ -168,11 +203,14 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			else
 				switch (temp->shader_type)
 				{
-				case Temp::ShaderType::VertexShader:
+				case Temp::ShaderType::VertexShader: 
+				case Temp::ShaderType::GeometryShader:
 					str = "gl_Position = "; break;
 				case Temp::ShaderType::PixelShader:
 					str = "FragColor = "; break;
 				} 
+			if (temp->shader_type == Temp::ShaderType::GeometryShader)
+				return { binary_to_glsl_conversion_exception::GeometryShaderReturnCall, {str.begin(), str.end()} };
 			return { binary_to_glsl_conversion_exception::LoadMathExpression, {str.begin(), str.end()} };
 		}
 	});
@@ -375,23 +413,69 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		}
 	});
 
-	//Bypass; TO DO
-	version->glsl_signatures_alternatives.push_back({true, 0,
+	//using geometry limit ?i
+	version->glsl_signatures_alternatives.push_back({false, 4,
 		[version](std::vector<uint8_t>& in, Temp* temp)
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
-			return { binary_to_glsl_conversion_exception::None, {} };
+			temp->write_target = Temp::WriteTarget::Geometry;
+
+			auto limit = decode_int(&in[0]);
+			temp->geometry_shader_vertices_limit = std::stoi(limit);
+
+			std::string str;
+			if (temp->geometry_shader_output_primitive_id != -1)
+				str = gen_geometry_output_layout_line(temp);
+
+			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
 	});
 
-	//Bypass; TO DO
-	version->glsl_signatures_alternatives.push_back({ true, 0,
+	//using geometry input primitive ?n ?n
+	version->glsl_signatures_alternatives.push_back({ true, 1,
 	[version](std::vector<uint8_t>& in, Temp* temp)
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
-			return { binary_to_glsl_conversion_exception::None, {} };
+			temp->write_target = Temp::WriteTarget::Geometry;
+
+			std::string str = "layout(";
+			switch (in[0])
+			{
+			case 0: str += "points"; break;
+			case 1: str += "lines"; break;
+			case 2: str += "triangles"; break;
+			}
+			str += ")in";
+			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
 	});
+
+	//using geometry output primitive ?n ?n
+	version->glsl_signatures_alternatives.push_back({ false, 1,
+	[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			temp->write_target = Temp::WriteTarget::Geometry;
+
+			temp->geometry_shader_output_primitive_id = in[0];
+
+			std::string str;
+			if (temp->geometry_shader_vertices_limit != -1)
+				str = gen_geometry_output_layout_line(temp);
+
+			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
+		}
+	});
+
+	//FinishPrimitive
+	version->glsl_signatures_alternatives.push_back({ true , 0,
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			std::string str = "EndPrimitive()";
+			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
+		}
+		});
 
 	//send ?t ?n = ?e
 	version->glsl_signatures_alternatives.push_back({ true , 0,

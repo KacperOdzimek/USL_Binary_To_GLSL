@@ -13,6 +13,7 @@ void TranslationTask::Start(void* source, int size)
 	std::vector<uint8_t> common{ glsl_version.begin(), glsl_version.end() };
 	std::vector<uint8_t> vertex{};
 	std::vector<uint8_t> fragment{};
+	std::vector<uint8_t> geometry{};
 
 	std::vector<uint8_t>* write_target = &common;
 
@@ -31,6 +32,8 @@ void TranslationTask::Start(void* source, int size)
 			write_target = &vertex; break;
 		case Temp::WriteTarget::Fragment:
 			write_target = &fragment; break;
+		case Temp::WriteTarget::Geometry:
+			write_target = &geometry; break;
 		}	
 
 		write_target->insert(write_target->end(), converted.second.begin(), converted.second.end());
@@ -131,6 +134,13 @@ void TranslationTask::Start(void* source, int size)
 			exception_result.push_back(')');
 			break;
 		}
+		case binary_to_glsl_conversion_exception::GeometryShaderReturnCall:
+		{
+			exception_result = LoadMathExpression(iterator, version.get(), temp);
+			std::string str = ";EmitVertex()";
+			exception_result.insert(exception_result.end(), str.begin(), str.end());
+			break;
+		}
 		}
 
 		write_target->insert(write_target->end(), exception_result.begin(), exception_result.end());
@@ -146,10 +156,15 @@ void TranslationTask::Start(void* source, int size)
 	delete temp;
 
 	result.success = true;
-	result.data.reserve(common.size() + vertex.size() + fragment.size());
+	result.data.reserve(common.size() + vertex.size() + geometry.size() + fragment.size());
 	result.data.insert(result.data.end(), common.begin(),   common.end());
 	result.data.push_back('\n');
 	result.data.insert(result.data.end(), vertex.begin(),   vertex.end());
 	result.data.push_back('\n');
+	if (geometry.size() != 0)
+	{
+		result.data.insert(result.data.end(), geometry.begin(), geometry.end());
+		result.data.push_back('\n');
+	}
 	result.data.insert(result.data.end(), fragment.begin(), fragment.end());
 }

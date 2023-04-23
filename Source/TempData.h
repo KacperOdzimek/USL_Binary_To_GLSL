@@ -10,12 +10,12 @@ struct Temp
 
 	enum class ShaderType
 	{
-		None, VertexShader, PixelShader
+		None, VertexShader, PixelShader, GeometryShader
 	};
 
 	enum class WriteTarget
 	{
-		Common, Vertex, Fragment
+		Common, Vertex, Fragment, Geometry
 	};
 
 	Context context = Context::GlobalScope;
@@ -82,4 +82,7 @@ struct Temp
 	bool vertex_layout_is_struct = false;
 
 	int vertex_layout_type = -1;
+
+	int geometry_shader_vertices_limit = -1;
+	int geometry_shader_output_primitive_id = -1;
 };
