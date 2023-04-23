@@ -176,7 +176,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		}
 	});
 
-	//PixelShader
+	//GeometryShader
 	version->glsl_signatures_alternatives.push_back({ false, 0,
 		[](std::vector<uint8_t>& in, Temp* temp)
 		-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
@@ -186,6 +186,10 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			temp->write_target = Temp::WriteTarget::Geometry;
 			temp->deepness = 1;
 			temp->vars_at_id.push_back(temp->vars_at_id.back());
+
+			temp->arrays_ids.push_back(temp->vars_at_id.back());
+			temp->vars_at_id.back()++;
+			temp->temp_vars_types.push_back(6);
 
 			std::string str = "void main() {";
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };

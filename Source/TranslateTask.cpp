@@ -147,6 +147,7 @@ void TranslationTask::Start(void* source, int size)
 
 		if (current.add_semicolon)
 			write_target->push_back(';');
+		write_target->push_back('\n');
 	}
 
 	if (temp->deepness != 0)
