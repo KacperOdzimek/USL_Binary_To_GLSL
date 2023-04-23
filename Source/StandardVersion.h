@@ -6,7 +6,7 @@
 
 enum class binary_to_glsl_conversion_exception : uint8_t
 {
-	None, FatalError, LoadLiteral, LoadMathExpression, Send, Catch, FunctionHeader, ArrayLiteral
+	None, FatalError, LoadLiteral, LoadMathExpression, Send, Catch, FunctionHeader, ArrayLiteral, GeometryShaderReturnCall, SendOverwrite
 };
 
 class StandardVersion

@@ -13,6 +13,7 @@ void TranslationTask::Start(void* source, int size)
 	std::vector<uint8_t> common{ glsl_version.begin(), glsl_version.end() };
 	std::vector<uint8_t> vertex{};
 	std::vector<uint8_t> fragment{};
+	std::vector<uint8_t> geometry{};
 
 	std::vector<uint8_t>* write_target = &common;
 
@@ -31,6 +32,8 @@ void TranslationTask::Start(void* source, int size)
 			write_target = &vertex; break;
 		case Temp::WriteTarget::Fragment:
 			write_target = &fragment; break;
+		case Temp::WriteTarget::Geometry:
+			write_target = &geometry; break;
 		}	
 
 		write_target->insert(write_target->end(), converted.second.begin(), converted.second.end());
@@ -51,16 +54,19 @@ void TranslationTask::Start(void* source, int size)
 			break;
 		case binary_to_glsl_conversion_exception::Send:
 		{
-			int type = *(iterator++);
-			std::string type_name = ((type < version->types_code_names.size()) ?
-				version->types_code_names[type] :
-				"s" + (std::to_string(type - version->types_code_names.size())));
+			if (true)
+			{
+				int type = *(iterator++);
+				std::string type_name = ((type < version->types_code_names.size()) ?
+					version->types_code_names[type] :
+					"s" + (std::to_string(type - version->types_code_names.size())));
 
-			std::string str = "out " + type_name +
-				" p" + std::to_string(temp->SentCounter) + ';';
-			temp->SentCounter++;
-			temp->sent_vars_types.push_back(type);
-			write_target->insert(write_target->begin(), str.begin(), str.end());
+				std::string str = "out " + type_name +
+					" p" + std::to_string(temp->SentCounter) + ';';
+				temp->SentCounter++;
+				temp->sent_vars_types.push_back(type);
+				write_target->insert(write_target->begin(), str.begin(), str.end());
+			}
 			exception_result = LoadMathExpression(iterator, version.get(), temp);
 			break;
 		}			
@@ -71,7 +77,12 @@ void TranslationTask::Start(void* source, int size)
 				"s" + (std::to_string(*iterator - version->types_code_names.size())));
 
 			temp->is_struct.push_back(*iterator >= version->types_code_names.size());
-			std::string str = "in " + type_name + " p" + std::to_string(*(iterator + 1)) + ';';
+			std::string str = "in " + type_name + " p" + std::to_string(*(iterator + 1));
+
+			if (temp->shader_type == Temp::ShaderType::GeometryShader)
+				str += "[]";
+
+			str += ';';
 
 			temp->temp_vars_types.push_back(*iterator);
 			temp->is_struct.push_back(0);
@@ -131,6 +142,24 @@ void TranslationTask::Start(void* source, int size)
 			exception_result.push_back(')');
 			break;
 		}
+		case binary_to_glsl_conversion_exception::GeometryShaderReturnCall:
+		{
+			exception_result = LoadMathExpression(iterator, version.get(), temp);
+			std::string str = ";EmitVertex()";
+			exception_result.insert(exception_result.end(), str.begin(), str.end());
+			break;
+		}
+		case binary_to_glsl_conversion_exception::SendOverwrite:
+		{
+			iterator++;	//bypass type
+			exception_result = LoadMathExpression(iterator, version.get(), temp);
+			uint8_t overwriten_send = *(iterator++);
+
+			std::string name = 'p' + std::to_string(overwriten_send) + '=';
+			exception_result.insert(exception_result.begin(), name.begin(), name.end());
+
+			break;
+		}
 		}
 
 		write_target->insert(write_target->end(), exception_result.begin(), exception_result.end());
@@ -146,10 +175,15 @@ void TranslationTask::Start(void* source, int size)
 	delete temp;
 
 	result.success = true;
-	result.data.reserve(common.size() + vertex.size() + fragment.size());
+	result.data.reserve(common.size() + vertex.size() + geometry.size() + fragment.size());
 	result.data.insert(result.data.end(), common.begin(),   common.end());
 	result.data.push_back('\n');
 	result.data.insert(result.data.end(), vertex.begin(),   vertex.end());
 	result.data.push_back('\n');
+	if (geometry.size() != 0)
+	{
+		result.data.insert(result.data.end(), geometry.begin(), geometry.end());
+		result.data.push_back('\n');
+	}
 	result.data.insert(result.data.end(), fragment.begin(), fragment.end());
 }

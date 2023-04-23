@@ -78,6 +78,15 @@ struct Node
 			if (name.size() == 0)
 			{
 				int offset = 0;
+
+				if (temp->shader_type == Temp::ShaderType::GeometryShader 
+					&& temp->context == Temp::Context::Shader
+					&& *iterator - 128 == 0)
+				{
+					name = "gl_in";
+					goto var_out;
+				}
+
 				if (temp->shader_type == Temp::ShaderType::VertexShader && temp->context == Temp::Context::Shader)
 					offset = -1;
 				if (*iterator - 128 == 0 && temp->shader_type == Temp::ShaderType::VertexShader)
@@ -93,6 +102,7 @@ struct Node
 				else
 					name = "v" + std::to_string(*iterator - 128 + offset);
 			}
+			var_out:
 			content = std::vector<uint8_t>(name.begin(), name.end());
 			next_owned = 0;
 			++iterator;
@@ -173,8 +183,39 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 
 			node->content.push_back('[');
 			auto id_node = get_node();
-			node->content.insert(node->content.end(), id_node->content.begin(), id_node->content.end());
+			std::string id;
+			if (id_node->r_type == ReturnType::Float)
+			{
+				std::string id_str = "int(";
+				id_str.insert(id_str.end(), id_node->content.begin(), id_node->content.end());
+				id_str.push_back(')');
+				node->content.insert(node->content.end(), id_str.begin(), id_str.end());
+			}
+			else
+				node->content.insert(node->content.end(), id_node->content.begin(), id_node->content.end());
+			
 			node->content.push_back(']');
+
+			if (temp->shader_type == Temp::ShaderType::GeometryShader
+				&& temp->context == Temp::Context::Shader)
+			{
+				std::string interface_block_name = "gl_in[";
+				bool result = true;
+				for (int i = 0; i < interface_block_name.size(); i++)
+				{
+					if (node->content.at(i) != interface_block_name.at(i))
+					{
+						result = false;
+						break;
+					}
+				}
+
+				if (result)
+				{
+					std::string extension = ".gl_Position";
+					node->content.insert(node->content.end(), extension.begin(), extension.end());
+				}
+			}
 			
 			own_requested = 0;
 		}
