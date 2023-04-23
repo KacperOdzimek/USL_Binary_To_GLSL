@@ -54,16 +54,19 @@ void TranslationTask::Start(void* source, int size)
 			break;
 		case binary_to_glsl_conversion_exception::Send:
 		{
-			int type = *(iterator++);
-			std::string type_name = ((type < version->types_code_names.size()) ?
-				version->types_code_names[type] :
-				"s" + (std::to_string(type - version->types_code_names.size())));
+			if (true)
+			{
+				int type = *(iterator++);
+				std::string type_name = ((type < version->types_code_names.size()) ?
+					version->types_code_names[type] :
+					"s" + (std::to_string(type - version->types_code_names.size())));
 
-			std::string str = "out " + type_name +
-				" p" + std::to_string(temp->SentCounter) + ';';
-			temp->SentCounter++;
-			temp->sent_vars_types.push_back(type);
-			write_target->insert(write_target->begin(), str.begin(), str.end());
+				std::string str = "out " + type_name +
+					" p" + std::to_string(temp->SentCounter) + ';';
+				temp->SentCounter++;
+				temp->sent_vars_types.push_back(type);
+				write_target->insert(write_target->begin(), str.begin(), str.end());
+			}
 			exception_result = LoadMathExpression(iterator, version.get(), temp);
 			break;
 		}			
@@ -139,6 +142,17 @@ void TranslationTask::Start(void* source, int size)
 			exception_result = LoadMathExpression(iterator, version.get(), temp);
 			std::string str = ";EmitVertex()";
 			exception_result.insert(exception_result.end(), str.begin(), str.end());
+			break;
+		}
+		case binary_to_glsl_conversion_exception::SendOverwrite:
+		{
+			iterator++;	//bypass type
+			exception_result = LoadMathExpression(iterator, version.get(), temp);
+			uint8_t overwriten_send = *(iterator++);
+
+			std::string name = 'p' + std::to_string(overwriten_send) + '=';
+			exception_result.insert(exception_result.begin(), name.begin(), name.end());
+
 			break;
 		}
 		}

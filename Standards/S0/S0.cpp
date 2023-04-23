@@ -491,6 +491,15 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		}
 		});
 
+	//send ?t ?n = ?e (overwrite)
+	version->glsl_signatures_alternatives.push_back({true , 0,
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			return { binary_to_glsl_conversion_exception::SendOverwrite, {} };
+		}
+	});
+
 	//catch ?t ?n
 	version->glsl_signatures_alternatives.push_back({ false , 0,
 		[version](std::vector<uint8_t>& in, Temp* temp)
