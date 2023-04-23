@@ -77,7 +77,12 @@ void TranslationTask::Start(void* source, int size)
 				"s" + (std::to_string(*iterator - version->types_code_names.size())));
 
 			temp->is_struct.push_back(*iterator >= version->types_code_names.size());
-			std::string str = "in " + type_name + " p" + std::to_string(*(iterator + 1)) + ';';
+			std::string str = "in " + type_name + " p" + std::to_string(*(iterator + 1));
+
+			if (temp->shader_type == Temp::ShaderType::GeometryShader)
+				str += "[]";
+
+			str += ';';
 
 			temp->temp_vars_types.push_back(*iterator);
 			temp->is_struct.push_back(0);
@@ -161,7 +166,6 @@ void TranslationTask::Start(void* source, int size)
 
 		if (current.add_semicolon)
 			write_target->push_back(';');
-		write_target->push_back('\n');
 	}
 
 	if (temp->deepness != 0)
