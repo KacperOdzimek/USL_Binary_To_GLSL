@@ -44,12 +44,16 @@ struct Node
 		else if (*iterator >= 64 && *iterator < 96)
 		{
 			content = version->literal_decoding_functions.at(*iterator - 64).func(iterator + 1);
-			switch (*iterator - 64)
-			{
-			case 0:  r_type = ReturnType::Int;   break;
-			case 1:  r_type = ReturnType::Float; break;
-			default: r_type = ReturnType::Other; break;
-			}
+
+			if (*iterator - 64 >= version->types_code_names.size())
+				r_type = ReturnType::Struct;
+			else
+				switch (*iterator - 64)
+				{
+					case 0:  r_type = ReturnType::Int;   break;
+					case 1:  r_type = ReturnType::Float; break;
+					default: r_type = ReturnType::Other; break;
+				}
 			iterator += version->literal_decoding_functions.at(*iterator - 64).literal_size + 1;
 			next_owned = 0;
 		}
@@ -129,7 +133,13 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 			node = get_node();
 
 			int id = *iterator;
-			if (*(iterator - 1) >= 128)
+			if (node->r_type == ReturnType::Struct)
+			{
+				std::string str = ".m";
+				str += std::to_string(id);
+				node->content.insert(node->content.end(), str.begin(), str.end());
+			}
+			else if (*(iterator - 1) >= 128)
 			{
 				//Vertex built in var in Vertex Shader
 				if (*(iterator - 1) == 128 &&
@@ -217,6 +227,18 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 				}
 			}
 			
+			std::string arr_id_str;
+			for (int i = 1; i < node->content.size(); i++)
+				if (node->content.at(i) == '[')
+					break;
+				else
+					arr_id_str += node->content.at(i);
+
+			int arr_id = std::stoi(arr_id_str);
+
+			node->r_type = (temp->does_array_contain_struct.at(arr_id))
+				? ReturnType::Struct : ReturnType::Other;
+
 			own_requested = 0;
 		}
 

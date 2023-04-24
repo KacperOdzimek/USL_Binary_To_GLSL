@@ -125,16 +125,15 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		{
 			std::string str = (temp->context == Temp::Context::StructDeclaration) ? "};" : "}";
 
+			temp->vars_at_id.erase(temp->vars_at_id.end() - 1);
+			temp->is_struct.resize(temp->vars_at_id.back());
+
 			temp->deepness -= 1;
 			if (temp->deepness == 0)
 			{
 				temp->temp_vars_types.clear();
-				temp->arrays_ids.clear();
 				temp->context = Temp::Context::GlobalScope;
-			}	
-
-			temp->is_struct.resize(temp->vars_at_id.back());
-			temp->vars_at_id.erase(temp->vars_at_id.end() - 1);
+			}
 
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
@@ -187,7 +186,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			temp->deepness = 1;
 			temp->vars_at_id.push_back(temp->vars_at_id.back());
 
-			temp->arrays_ids.push_back(temp->vars_at_id.back());
+			temp->does_array_contain_struct.insert({ temp->vars_at_id.back(), false});
 			temp->vars_at_id.back()++;
 			temp->temp_vars_types.push_back(6);
 
@@ -296,7 +295,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			str.insert(str.end(), arr_size_as_bin.begin(), arr_size_as_bin.end());
 			str += ']';
 
-			temp->arrays_ids.push_back(temp->vars_at_id.back());
+			temp->does_array_contain_struct.insert({ temp->vars_at_id.back(), !(in[0] < version->types_code_names.size()) });
 			temp->vars_at_id.back()++;
 			temp->temp_vars_types.push_back(6);
 
@@ -319,7 +318,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			str.insert(str.end(), arr_size_as_bin.begin(), arr_size_as_bin.end());
 			str += "] = " + type + "[]";
 
-			temp->arrays_ids.push_back(temp->vars_at_id.back());
+			temp->does_array_contain_struct.insert({ temp->vars_at_id.back(), !(in[0] < version->types_code_names.size()) });
 			temp->vars_at_id.back()++;
 			temp->temp_vars_types.push_back(6);
 
@@ -407,15 +406,46 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		{
 			temp->write_target = Temp::WriteTarget::Common;
 			//To do: uniform structs
-			std::string str = "uniform " + version->types_code_names.at(in[0]) + " v" 
+			std::string str = "uniform " + 
+				((in[0] < version->types_code_names.size()) ?
+				version->types_code_names[in[0]] :
+				"s" + (std::to_string(in[0] - version->types_code_names.size()))) 
+				+ " v"
 				+ std::to_string(temp->vars_at_id.back());
 			temp->vars_at_id.at(0)++;
 			temp->uniforms_types.push_back(in[0]);
-			//To do extern structs
-			temp->is_struct.push_back(0);
+
+			temp->is_struct.push_back(!(in[0] < version->types_code_names.size()));
+
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
 	});
+
+	//using extern ?t ?n [ ?i ]
+	version->glsl_signatures_alternatives.push_back({ true , 5,
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			auto arr_size = decode_int(&in[1]);
+
+			temp->write_target = Temp::WriteTarget::Common;
+			//To do: uniform structs
+			std::string str = "uniform " +
+				((in[0] < version->types_code_names.size()) ?
+				version->types_code_names[in[0]] :
+				"s" + (std::to_string(in[0] - version->types_code_names.size())))
+				+ " v"
+				+ std::to_string(temp->vars_at_id.back()) + '[' + arr_size + ']';
+			temp->vars_at_id.at(0)++;
+			temp->uniforms_types.push_back(in[0]);
+
+			temp->is_struct.push_back(!(in[0] < version->types_code_names.size()));
+			temp->does_array_contain_struct.insert({ temp->vars_at_id.at(0) - 1,
+				!(in[0] < version->types_code_names.size()) });
+
+			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
+		}
+		});
 
 	//using geometry limit ?i
 	version->glsl_signatures_alternatives.push_back({false, 4,

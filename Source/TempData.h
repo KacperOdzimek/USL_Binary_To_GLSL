@@ -51,7 +51,8 @@ struct Temp
 
 	std::vector<int> sent_vars_types;
 
-	std::vector<int> arrays_ids;
+	//Array variable id, contains structs
+	std::map<int, bool> does_array_contain_struct;
 
 	int deepness = 0;
 
