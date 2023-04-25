@@ -297,13 +297,44 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 		{
 			auto result = n->content;
 			result.push_back('(');
+			std::vector<std::vector<uint8_t>> args;
 			for (int i = 0; i < n->owned.size(); i++)
+				args.push_back(tree_to_exp(n->owned[i].get()).first);
+
+			//Swizzling optimization
+			for (int offset = 0; offset < args.size(); offset++)
 			{
-				auto arg = tree_to_exp(n->owned[i].get());
-				result.insert(result.end(), arg.first.begin(), arg.first.end());
-				if (i != n->owned.size() - 1)
+				result.insert(result.end(), args[offset].begin(), args[offset].end());
+				for (int swizzle = offset + 1; swizzle < args.size(); swizzle++)
+				{
+					if (args[swizzle].size() < 3 || args[swizzle].at(args.size() - 2) != '.')
+					{
+						offset = swizzle - 1;
+						break;
+					}
+					else
+					{
+						std::string first_arg_raw = { args[offset].begin(), args[offset].end() };
+						std::string vector1 = first_arg_raw.substr(0, first_arg_raw.size() - 2);
+
+						std::string sec_arg_raw = { args[swizzle].begin(), args[swizzle].end() };
+						std::string vector2 = sec_arg_raw.substr(0, sec_arg_raw.size() - 2);
+
+						if (vector1 == vector2)
+						{
+							result.push_back(sec_arg_raw.back());
+						}
+						else
+						{
+							offset = swizzle - 1;
+							break;
+						}
+					}
+				}
+				if (offset != n->owned.size() - 1)
 					result.push_back(',');
 			}
+
 			result.push_back(')');
 			return { result, ReturnType::Other };
 		}
