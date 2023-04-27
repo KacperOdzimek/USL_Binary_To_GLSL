@@ -49,6 +49,18 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 
 	version->types_code_names = {"int", "float", "vec2", "vec3", "vec4", "array_error"};
 
+	version->built_in_functions.push_back({ "distance", 0, {ReturnType::Int, ReturnType::Int} });
+	version->built_in_functions.push_back({ "distance", 1, {ReturnType::Float, ReturnType::Float} });
+	version->built_in_functions.push_back({ "distance", 2, {ReturnType::Other, ReturnType::Other} });
+	version->built_in_functions.push_back({ "distance", 3, {ReturnType::Other, ReturnType::Other} });
+	version->built_in_functions.push_back({ "distance", 4, {ReturnType::Other, ReturnType::Other} });
+
+	version->built_in_functions.push_back({ "round", 0, {ReturnType::Float} });
+	version->built_in_functions.push_back({ "cell",  0, {ReturnType::Float} });
+	version->built_in_functions.push_back({ "floor", 0, {ReturnType::Float} });
+
+	version->built_in_functions.push_back({ "sqrt",  1, {ReturnType::Float} });
+
 #define Insert(text) [](std::vector<uint8_t>& in, Temp* temp)													\
 	-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>										\
 	{																											\

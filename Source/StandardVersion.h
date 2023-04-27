@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <functional>
+#include "ReturnDataType.h"
 
 #include "TranslationTask.h"
 
@@ -42,10 +43,19 @@ public:
 			literal_size(_literal_size), func(_func) {};
 	};
 
+	struct built_in_function
+	{
+		std::string glsl_name;
+		int return_id;
+		std::vector<ReturnType> args;
+		built_in_function(std::string _glsl_name, int _return_id, std::vector<ReturnType> _args) :
+			glsl_name(_glsl_name), return_id(_return_id), args(_args) {};
+	};
+
 	//names of vars in glsl, position on vector = id in usl
 	std::vector <std::string> types_code_names;
-
 	std::vector<literal_decoding_function> literal_decoding_functions;
+	std::vector<built_in_function> built_in_functions;
 };
 
 std::unique_ptr<StandardVersion> CreateStandardVersion(unsigned int version);

@@ -86,4 +86,6 @@ struct Temp
 
 	int geometry_shader_vertices_limit = -1;
 	int geometry_shader_output_primitive_id = -1;
+
+	std::vector<int> maunaly_managed_global_access_buffor;
 };

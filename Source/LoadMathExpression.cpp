@@ -16,7 +16,7 @@ struct Node
 	std::vector<uint8_t> content;
 	std::vector<std::unique_ptr<Node>> owned;
 	Node* upper = nullptr;
-	Node(uint8_t*& iterator, int& next_owned, const StandardVersion* version, const Temp* temp)
+	Node(uint8_t*& iterator, int& next_owned, const StandardVersion* version, Temp* temp)
 	{
 		//Operator
 		if (*iterator < 32)
@@ -65,10 +65,24 @@ struct Node
 			++iterator;
 			uint8_t func_id_2 = *(iterator);
 			uint16_t func_id = ((uint16_t)func_id_1 << 8) | func_id_2;
+			//User definied
+			std::string str;
+			if (func_id >= version->built_in_functions.size())
+			{
+				func_id -= version->built_in_functions.size();
+				r_type = temp->function_return_types.at(func_id);
+				str = 'f' + std::to_string(func_id) + '(';
+				next_owned = temp->function_args_count.at(func_id);
+			}
+			//Built-In
+			else
+			{
+				r_type = ReturnType(version->built_in_functions.at(func_id).return_id);
+				str = version->built_in_functions.at(func_id).glsl_name + '(';
+				next_owned = version->built_in_functions.at(func_id).args.size();
 
-			r_type = temp->function_return_types.at(func_id);
-			std::string str = 'f' + std::to_string(func_id) + '(';
-			next_owned = temp->function_args_count.at(func_id);
+				temp->maunaly_managed_global_access_buffor.push_back(func_id);
+			}
 			iterator++;
 			content = { str.begin(), str.end() };
 		}
@@ -260,7 +274,7 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 
 	std::function<std::pair<decltype(Node::content), ReturnType>(const Node* n)> tree_to_exp;
 
-	tree_to_exp = [&tree_to_exp, &temp](const Node* n) -> std::pair<decltype(Node::content), ReturnType>
+	tree_to_exp = [&tree_to_exp, &temp, version](const Node* n) -> std::pair<decltype(Node::content), ReturnType>
 	{
 		if (n->type == Node::Type::Variable || 
 			n->type == Node::Type::Literal)
@@ -269,12 +283,24 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 		else if (n->type == Node::Type::Function)
 		{
 			std::vector<uint8_t> call = n->content;
-			int func_id = std::stoi(std::string(n->content.begin() + 1, n->content.end()));
+
+			std::vector<ReturnType> args_types;
+
+			//If function name ends with a digit then it is user declared one otherwise built-in
+			if (n->content.at(n->content.size() - 2) >= '0' && n->content.at(n->content.size() - 2) <= '9')
+				args_types =
+				temp->function_args_types.at(std::stoi(std::string(n->content.begin() + 1, n->content.end())));
+			else
+			{
+				args_types = version->built_in_functions.at(temp->maunaly_managed_global_access_buffor.at(0)).args;
+				temp->maunaly_managed_global_access_buffor.clear();
+			}
+
 			for (int i = 0; i < n->owned.size(); i++)
 			{
 				auto arg = tree_to_exp(n->owned[i].get());
 				bool add_ending_bracket = false;
-				if (arg.second == ReturnType::Float && temp->function_args_types.at(func_id)[i] == ReturnType::Int)
+				if (arg.second == ReturnType::Float && args_types[i] == ReturnType::Int)
 				{
 					std::string conversion = "int(";
 					call.insert(call.end(), conversion.begin(), conversion.end());
