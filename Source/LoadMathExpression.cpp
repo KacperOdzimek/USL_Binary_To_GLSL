@@ -61,7 +61,11 @@ struct Node
 		else if (*iterator >= 96 && *iterator < 128)
 		{
 			type = Type::Function;
-			int func_id = (*iterator) - 96;
+			uint8_t func_id_1 = (*iterator) - 96;
+			++iterator;
+			uint8_t func_id_2 = *(iterator);
+			uint16_t func_id = ((uint16_t)func_id_1 << 8) | func_id_2;
+
 			r_type = temp->function_return_types.at(func_id);
 			std::string str = 'f' + std::to_string(func_id) + '(';
 			next_owned = temp->function_args_count.at(func_id);
