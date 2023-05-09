@@ -47,9 +47,10 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 {
 	StandardVersion* version = new StandardVersion;
 
-	version->types_code_names = {"int", "float", "vec2", "vec3", "vec4", "array_error"};
+	version->types_code_names = {"int", "float", "vec2", "vec3", "vec4", "array_error", 
+		"buffer", "sampler1D", "sampler2D", "sampler3d", "samplerCube", "sampler2DMS"};
 
-	version->built_in_functions.push_back({ "distance", 0, {ReturnType::Int, ReturnType::Int} });
+	version->built_in_functions.push_back({ "distance", 0, {ReturnType::Int,   ReturnType::Int} });
 	version->built_in_functions.push_back({ "distance", 1, {ReturnType::Float, ReturnType::Float} });
 	version->built_in_functions.push_back({ "distance", 2, {ReturnType::Other, ReturnType::Other} });
 	version->built_in_functions.push_back({ "distance", 3, {ReturnType::Other, ReturnType::Other} });
@@ -60,6 +61,15 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 	version->built_in_functions.push_back({ "floor", 0, {ReturnType::Float} });
 
 	version->built_in_functions.push_back({ "sqrt",  1, {ReturnType::Float} });
+
+	//Sample textures: 1d, 2d, 3d, cube, 2d multisample
+	version->built_in_functions.push_back({ "texture", 4, {ReturnType::Other, ReturnType::Float} });
+	version->built_in_functions.push_back({ "texture", 4, {ReturnType::Other, ReturnType::Other} });
+	version->built_in_functions.push_back({ "texture", 4, {ReturnType::Other, ReturnType::Other} });
+	version->built_in_functions.push_back({ "texture", 4, {ReturnType::Other, ReturnType::Other} });
+	version->built_in_functions.push_back({ "texelFetch", 4, 
+		{ReturnType::Other, ReturnType::Other, ReturnType::Int}});
+
 
 #define Insert(text) [](std::vector<uint8_t>& in, Temp* temp)													\
 	-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>										\
@@ -138,6 +148,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			std::string str = (temp->context == Temp::Context::StructDeclaration) ? "};" : "}";
 
 			temp->vars_at_id.erase(temp->vars_at_id.end() - 1);
+			if (temp->vars_at_id.size() == 0) temp->vars_at_id.push_back(0);
 			temp->is_struct.resize(temp->vars_at_id.back());
 
 			temp->deepness -= 1;
@@ -149,6 +160,15 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
+	});
+
+	//define
+	version->glsl_signatures_alternatives.push_back({ false, 0,
+	[](std::vector<uint8_t>& in, Temp* temp)
+	-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+	{
+		return { binary_to_glsl_conversion_exception::None, {} };
+	}
 	});
 
 	//VertexShader
@@ -458,6 +478,33 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
 		});
+
+	//Load texture
+	version->glsl_signatures_alternatives.push_back({ true, 1,
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			temp->write_target = Temp::WriteTarget::Common;
+			std::string str = "uniform " + version->types_code_names.at(in[0]) 
+				+ " v" + std::to_string(temp->vars_at_id.back());
+
+			temp->vars_at_id.at(0)++;
+			temp->uniforms_types.push_back(in[0]);
+			temp->is_struct.push_back(0);
+
+			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
+		}
+	});
+
+	//using library ?n
+	version->glsl_signatures_alternatives.push_back({ false, 0,
+		[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			temp->write_target = Temp::WriteTarget::Common;
+			return {binary_to_glsl_conversion_exception::UsingLibrary, {}};
+		}
+	});
 
 	//using geometry limit ?i
 	version->glsl_signatures_alternatives.push_back({false, 4,

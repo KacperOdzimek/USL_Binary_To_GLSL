@@ -18,9 +18,15 @@ struct Temp
 		Common, Vertex, Fragment, Geometry
 	};
 
+	enum class FileType
+	{
+		Shader, Library, Metashader
+	};
+
 	Context context = Context::GlobalScope;
 	ShaderType shader_type = ShaderType::None;
 	WriteTarget write_target = WriteTarget::Common;
+	FileType file_type = FileType::Shader;
 
 	/*
 		Each value represents variables count at given deepness

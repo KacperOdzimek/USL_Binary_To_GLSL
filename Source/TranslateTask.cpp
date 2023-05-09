@@ -1,16 +1,47 @@
+#include "../Include/USL_Binary_To_GLSL.h"
 #include "TranslationTask.h"
 #include "StandardVersion.h"
 #include "LoadMathExpression.h"
 
-void TranslationTask::Start(void* source, int size)
+#include <iostream>
+
+void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 {
 	temp = new Temp;
 
 	std::unique_ptr<StandardVersion> version = CreateStandardVersion(0);
 	uint8_t* iterator = (uint8_t*)source;
+	uint8_t std_version = *(iterator);
+	uint8_t file_type = *(++iterator);
+
+	switch (file_type)
+	{
+	case 0:
+		temp->file_type = Temp::FileType::Shader; 
+		iterator++;
+		break;
+	case 1:
+	{
+		temp->file_type = Temp::FileType::Library;
+		//Skip functions headers positions
+		uint16_t headers_position;
+		uint8_t arr[2] = {*(++iterator), *(++iterator)};
+		memcpy(&headers_position, &arr[0], 2);
+
+		iterator += headers_position * 2 + 2;
+
+		break;
+	}
+	case 2:
+		temp->file_type = Temp::FileType::Metashader; break;
+	}
+
+	std::vector<uint8_t> common;
 	std::string glsl_version = "#version 330\n";
 
-	std::vector<uint8_t> common{ glsl_version.begin(), glsl_version.end() };
+	if (temp->file_type == Temp::FileType::Shader)
+		common.insert(common.end(), glsl_version.begin(), glsl_version.end());
+
 	std::vector<uint8_t> vertex{};
 	std::vector<uint8_t> fragment{};
 	std::vector<uint8_t> geometry{};
@@ -123,7 +154,16 @@ void TranslationTask::Start(void* source, int size)
 			exception_result.push_back(')');
 			exception_result.push_back('{');
 			temp->function_args_count.push_back(args_count);
+
 			++iterator;
+
+			//skip function name
+			if (temp->file_type == Temp::FileType::Library)
+			{
+				int name_size = *(iterator);
+				iterator += name_size + 1;
+			}
+				
 			break;
 		}
 		case binary_to_glsl_conversion_exception::ArrayLiteral:
@@ -160,6 +200,25 @@ void TranslationTask::Start(void* source, int size)
 
 			break;
 		}
+		case binary_to_glsl_conversion_exception::UsingLibrary:
+		{
+			int lib_name_size = *(iterator++);
+			std::string lib_name;
+			lib_name.insert(lib_name.begin(), (char*)iterator, (char*)iterator + lib_name_size);
+			iterator += lib_name_size;
+
+			auto content = USL_Translator::USL_Binary_To_GLSL::LEFC(0, lib_name);
+			if (content.size != 0)
+			{
+				uint8_t* lib_iterator = (uint8_t*)content.position;
+				TranslationTask translate_task;
+				translate_task.Start(lib_iterator, content.size, temp);
+				auto& x = translate_task.result;
+				exception_result.insert(exception_result.begin(), x.data.begin(), x.data.end());
+			}
+			
+			break;
+		}
 		}
 
 		write_target->insert(write_target->end(), exception_result.begin(), exception_result.end());
@@ -172,18 +231,38 @@ void TranslationTask::Start(void* source, int size)
 		for (int i = 0; i < temp->deepness; i++)
 			write_target->push_back('}');
 
-	delete temp;
-
-	result.success = true;
-	result.data.reserve(common.size() + vertex.size() + geometry.size() + fragment.size());
-	result.data.insert(result.data.end(), common.begin(),   common.end());
-	result.data.push_back('\n');
-	result.data.insert(result.data.end(), vertex.begin(),   vertex.end());
-	result.data.push_back('\n');
-	if (geometry.size() != 0)
+	if (owning_task_temp != nullptr && temp->file_type == Temp::FileType::Library)
 	{
-		result.data.insert(result.data.end(), geometry.begin(), geometry.end());
-		result.data.push_back('\n');
+		owning_task_temp->function_args_count.insert(owning_task_temp->function_args_count.end(),
+			temp->function_args_count.begin(), temp->function_args_count.end());
+
+		owning_task_temp->function_args_types.insert(owning_task_temp->function_args_types.end(),
+			temp->function_args_types.begin(), temp->function_args_types.end());
+
+		owning_task_temp->function_return_types.insert(owning_task_temp->function_return_types.end(),
+			temp->function_return_types.begin(), temp->function_return_types.end());
 	}
-	result.data.insert(result.data.end(), fragment.begin(), fragment.end());
+
+	if (temp->file_type == Temp::FileType::Shader)
+	{
+		result.success = true;
+		result.data.reserve(common.size() + vertex.size() + geometry.size() + fragment.size());
+		result.data.insert(result.data.end(), common.begin(), common.end());
+		result.data.push_back('\n');
+		result.data.insert(result.data.end(), vertex.begin(), vertex.end());
+		result.data.push_back('\n');
+		if (geometry.size() != 0)
+		{
+			result.data.insert(result.data.end(), geometry.begin(), geometry.end());
+			result.data.push_back('\n');
+		}
+		result.data.insert(result.data.end(), fragment.begin(), fragment.end());
+	}
+	else
+	{
+		result.success = true;
+		result.data = common;
+	}
+
+	delete temp;
 }

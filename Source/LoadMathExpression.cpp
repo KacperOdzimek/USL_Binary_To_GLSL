@@ -28,7 +28,7 @@ struct Node
 			case 1: content = { '-' }; break;
 			case 2: content = { '*' }; break;
 			case 3: content = { '/' }; break;
-			case 4: content = { '^' }; break;
+			case 4: content = { 'p','o','w'}; break;
 			case 5: content = { 'v','e','c','2' }; break;
 			case 6: content = { 'v','e','c','3' }; break;
 			case 7: content = { 'v','e','c','4' }; break;
