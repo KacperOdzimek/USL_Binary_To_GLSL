@@ -36,6 +36,9 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 		temp->file_type = Temp::FileType::Metashader; break;
 	}
 
+	if (owning_task_temp != nullptr && temp->file_type == Temp::FileType::Library)
+		temp->FuncCounter = owning_task_temp->FuncCounter;
+
 	std::vector<uint8_t> common;
 	std::string glsl_version = "#version 330\n";
 
@@ -241,6 +244,8 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 
 		owning_task_temp->function_return_types.insert(owning_task_temp->function_return_types.end(),
 			temp->function_return_types.begin(), temp->function_return_types.end());
+
+		owning_task_temp->FuncCounter = temp->FuncCounter;
 	}
 
 	if (temp->file_type == Temp::FileType::Shader)
