@@ -47,8 +47,16 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 {
 	StandardVersion* version = new StandardVersion;
 
-	version->types_code_names = {"int", "float", "vec2", "vec3", "vec4", "array_error", 
-		"buffer", "sampler1D", "sampler2D", "sampler3d", "samplerCube", "sampler2DMS"};
+	version->types_code_names = {
+		"int", "float", 
+		"vec2", "vec3", "vec4", 
+		"array_error", 
+		"buffer", "sampler1D", "sampler2D", 
+		"sampler3d", "samplerCube", "sampler2DMS",
+		"mat2",   "mat3x2",  "mat4x2", 
+		"mat2x3", "mat3",    "mat4x3",
+		"mat2x4", "mat3x4",  "mat4",
+	};
 
 	version->built_in_functions.push_back({ "distance", 0, {ReturnType::Int,   ReturnType::Int} });
 	version->built_in_functions.push_back({ "distance", 1, {ReturnType::Float, ReturnType::Float} });

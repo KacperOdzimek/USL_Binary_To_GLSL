@@ -8,7 +8,7 @@ struct Node
 {
 	enum class Type
 	{
-		Variable, BasicMathOperator, Literal, Function, VecConstructor, GetOperator, ArrayGet
+		Variable, BasicMathOperator, Literal, Function, VecConstructor, GetOperator, ArrayGet, MatrixGet
 	} type = Type::Literal;
 
 	ReturnType r_type = ReturnType::Other;
@@ -34,9 +34,12 @@ struct Node
 			case 7: content = { 'v','e','c','4' }; break;
 			case 8: type = Type::GetOperator; break;
 			case 9: type = Type::ArrayGet; break;
+			case 10: type = Type::MatrixGet; break;
 			}
 			next_owned = *iterator < 5 ? 2 : *iterator - 3;
 			if (type == Type::GetOperator)
+				next_owned = 0;
+			if (type == Type::MatrixGet)
 				next_owned = 0;
 			iterator++;
 		}
@@ -254,8 +257,39 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 
 			int arr_id = std::stoi(arr_id_str);
 
-			node->r_type = (temp->does_array_contain_struct.at(arr_id))
-				? ReturnType::Struct : ReturnType::Other;
+			if (arr_id >= temp->does_array_contain_struct.size())
+				node->r_type = ReturnType::Other;
+			else
+				node->r_type = (temp->does_array_contain_struct.at(arr_id))
+					? ReturnType::Struct : ReturnType::Other;
+
+			own_requested = 0;
+		}
+		else if (node->type == Node::Type::MatrixGet)
+		{
+			//Array var
+			node = get_node();
+
+			std::string var_id;
+			var_id.insert(var_id.begin(), node->content.begin() + 1, node->content.end());
+
+			std::unique_ptr<Node> id_nodes[2] = { get_node(), get_node() };
+			for (int i = 0; i < 2; i++)
+			{
+				node->content.push_back('[');
+				std::string id;
+				if (id_nodes[i]->r_type == ReturnType::Float)
+				{
+					std::string id_str = "int(";
+					id_str.insert(id_str.end(), id_nodes[i]->content.begin(), id_nodes[i]->content.end());
+					id_str.push_back(')');
+					node->content.insert(node->content.end(), id_str.begin(), id_str.end());
+				}
+				else
+					node->content.insert(node->content.end(), id_nodes[i]->content.begin(), id_nodes[i]->content.end());
+
+				node->content.push_back(']');
+			}
 
 			own_requested = 0;
 		}
