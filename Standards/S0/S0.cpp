@@ -263,14 +263,14 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		[version](std::vector<uint8_t>& in, Temp* temp)
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
+			std::string str;
+
 			if (temp->context == Temp::Context::StructDeclaration)
 			{
-				std::string str;
 				str += version->types_code_names.at(in[0]);
 				str += " m" + std::to_string(temp->vars_at_id.back());
 				temp->structs.at(temp->structs.size() - 1).push_back(in[0]);
 				temp->vars_at_id.back()++;
-				return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 			}
 			else
 			{
@@ -282,8 +282,12 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				str += " v" + std::to_string(temp->vars_at_id.back());
 				temp->vars_at_id.back()++;
 				temp->is_struct.push_back(in[0] >= version->types_code_names.size());
-				return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 			}
+
+			return { temp->file_type == Temp::FileType::Library ? 
+				binary_to_glsl_conversion_exception::SkipName :
+				binary_to_glsl_conversion_exception::None, 
+				{str.begin(), str.end()} };
 		}
 	});
 
@@ -380,7 +384,10 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			
 			std::string str = "struct s";
 			str += std::to_string(temp->structs.size() - 1) + " {";
-			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
+			return { temp->file_type == Temp::FileType::Library ?
+				binary_to_glsl_conversion_exception::SkipName :
+				binary_to_glsl_conversion_exception::None,
+				{str.begin(), str.end()} };
 		}
 	});
 

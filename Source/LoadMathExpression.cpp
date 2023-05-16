@@ -120,7 +120,7 @@ struct Node
 					r_type = ReturnType(temp->temp_vars_types.at(*iterator - 128 + offset));
 				if (*iterator - 128 + offset < 0)
 				{
-					name = 's' + std::to_string(temp->vertex_layout_type - 5) + '(';
+					name = 's' + std::to_string(temp->vertex_layout_type - version->types_code_names.size()) + '(';
 					for (int i = 0; i < temp->vertex_variables; i++)
 						name += 'i' + std::to_string(i) + (i + 1 != temp->vertex_variables ? ',' : ')');
 				}

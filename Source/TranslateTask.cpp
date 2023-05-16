@@ -222,6 +222,12 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 			
 			break;
 		}
+		case binary_to_glsl_conversion_exception::SkipName:
+		{
+			int name_size = *(iterator);
+			iterator += name_size + 1;
+			break;
+		}
 		}
 
 		write_target->insert(write_target->end(), exception_result.begin(), exception_result.end());
@@ -244,6 +250,9 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 
 		owning_task_temp->function_return_types.insert(owning_task_temp->function_return_types.end(),
 			temp->function_return_types.begin(), temp->function_return_types.end());
+
+		owning_task_temp->structs.insert(owning_task_temp->structs.end(),
+			temp->structs.begin(), temp->structs.end());
 
 		owning_task_temp->FuncCounter = temp->FuncCounter;
 	}
