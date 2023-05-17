@@ -23,6 +23,15 @@ struct Temp
 		Shader, Library, Metashader
 	};
 
+	struct ImportedVarsPackage
+	{
+		int count;
+		std::vector<bool> is_struct;
+		std::vector<int> types;
+	};
+
+	std::vector<ImportedVarsPackage> cached_imported_vars;
+
 	Context context = Context::GlobalScope;
 	ShaderType shader_type = ShaderType::None;
 	WriteTarget write_target = WriteTarget::Common;

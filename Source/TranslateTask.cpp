@@ -82,9 +82,21 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 		case binary_to_glsl_conversion_exception::LoadLiteral:
 			exception_result = version->literal_decoding_functions.at(*(iterator - 1)).func(iterator);
 			iterator += version->literal_decoding_functions.at(*(iterator - 1)).literal_size;
+			if (temp->file_type == Temp::FileType::Library)
+			{
+				int name_size = *(iterator);
+				iterator += name_size + 1;
+				break;
+			}
 			break;
 		case binary_to_glsl_conversion_exception::LoadMathExpression:
 			exception_result = LoadMathExpression(iterator, version.get(), temp);
+			if (temp->file_type == Temp::FileType::Library)
+			{
+				int name_size = *(iterator);
+				iterator += name_size + 1;
+				break;
+			}
 			break;
 		case binary_to_glsl_conversion_exception::Send:
 		{
@@ -219,7 +231,6 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 				auto& x = translate_task.result;
 				exception_result.insert(exception_result.begin(), x.data.begin(), x.data.end());
 			}
-			
 			break;
 		}
 		case binary_to_glsl_conversion_exception::SkipName:
@@ -253,6 +264,21 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 
 		owning_task_temp->structs.insert(owning_task_temp->structs.end(),
 			temp->structs.begin(), temp->structs.end());
+
+		if (owning_task_temp->vertex_layout_type != -1)
+		{
+			owning_task_temp->vars_at_id.at(0) += temp->vars_at_id.at(0);
+			owning_task_temp->is_struct.insert(owning_task_temp->is_struct.end(), temp->is_struct.begin(), temp->is_struct.end());
+			owning_task_temp->temp_vars_types.insert(owning_task_temp->temp_vars_types.end(), temp->temp_vars_types.begin(), temp->temp_vars_types.end());
+		}
+		else
+		{
+			Temp::ImportedVarsPackage ivp;
+			ivp.count = temp->vars_at_id.at(0);
+			ivp.is_struct.insert(ivp.is_struct.end(), temp->is_struct.begin(), temp->is_struct.end());
+			ivp.types.insert(ivp.types.end(), temp->temp_vars_types.begin(), temp->temp_vars_types.end());
+			owning_task_temp->cached_imported_vars.push_back(ivp);
+		}
 
 		owning_task_temp->FuncCounter = temp->FuncCounter;
 	}

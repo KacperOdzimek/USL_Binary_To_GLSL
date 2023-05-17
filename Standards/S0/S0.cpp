@@ -414,6 +414,9 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		{
 			temp->write_target = Temp::WriteTarget::Vertex;
 			temp->vertex_layout_type = in[0];
+
+			std::vector<char> result;
+
 			//Basic type like int, float etc
 			if (in[0] < version->types_code_names.size())
 			{
@@ -422,7 +425,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				str += version->types_code_names.at(in[0]) + " i0" + ';';
 				temp->vertex_variables = 1;
 				temp->vertex_vars_types.push_back(in[0]);
-				return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
+				result.insert(result.end(), str.begin(), str.end());
 			}
 			//Struct
 			//As GLSL doesn't support using structs as input we need to 'unload'
@@ -431,7 +434,6 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			{
 				temp->vertex_layout_is_struct = true;
 				int i = 0;
-				std::vector<char> result;
 				for (i = 0; i < temp->structs.at(in[0] - version->types_code_names.size()).size(); i++)
 				{
 					int type = temp->structs.at(in[0] - version->types_code_names.size()).at(i);
@@ -441,8 +443,16 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 					temp->vertex_vars_types.push_back(type);
 					result.insert(result.end(), str.begin(), str.end());
 				}
-				return { binary_to_glsl_conversion_exception::None, result };
-			}	
+			}
+
+			for (auto& ipv : temp->cached_imported_vars)
+			{
+				temp->vars_at_id.at(0) += ipv.count;
+				temp->is_struct.insert(temp->is_struct.end(), ipv.is_struct.begin(), ipv.is_struct.end());
+				temp->temp_vars_types.insert(temp->temp_vars_types.end(), ipv.types.begin(), ipv.types.end());
+			}
+
+			return { binary_to_glsl_conversion_exception::None, result };
 		}
 	});
 
@@ -452,7 +462,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
 			temp->write_target = Temp::WriteTarget::Common;
-			//To do: uniform structs
+			
 			std::string str = "uniform " + 
 				((in[0] < version->types_code_names.size()) ?
 				version->types_code_names[in[0]] :
