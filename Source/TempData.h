@@ -32,6 +32,8 @@ struct Temp
 
 	std::vector<ImportedVarsPackage> cached_imported_vars;
 
+	int variable_id_shift_value = 0;
+
 	Context context = Context::GlobalScope;
 	ShaderType shader_type = ShaderType::None;
 	WriteTarget write_target = WriteTarget::Common;

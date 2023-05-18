@@ -279,7 +279,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				str += ((in[0] < version->types_code_names.size()) ?
 					version->types_code_names[in[0]] :
 					"s" + (std::to_string(in[0] - version->types_code_names.size())));
-				str += " v" + std::to_string(temp->vars_at_id.back());
+				str += " v" + std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value);
 				temp->vars_at_id.back()++;
 				temp->is_struct.push_back(in[0] >= version->types_code_names.size());
 			}
@@ -301,7 +301,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			str += ((in[0] < version->types_code_names.size()) ?
 				version->types_code_names[in[0]] :
 				"s" + (std::to_string(in[0] - version->types_code_names.size())));
-			str += " v" + std::to_string(temp->vars_at_id.back()) + '=';
+			str += " v" + std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value) + '=';
 			temp->vars_at_id.back()++;
 			temp->is_struct.push_back(in[0] >= version->types_code_names.size());
 			return { binary_to_glsl_conversion_exception::LoadLiteral, {str.begin(), str.end()} };
@@ -318,7 +318,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			str += ((in[0] < version->types_code_names.size()) ?
 				version->types_code_names[in[0]] :
 				"s" + (std::to_string(in[0] - version->types_code_names.size())));
-			str += " v" + std::to_string(temp->vars_at_id.back()) + '=';
+			str += " v" + std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value) + '=';
 			temp->vars_at_id.back()++;
 			temp->is_struct.push_back(in[0] >= version->types_code_names.size());
 			return { binary_to_glsl_conversion_exception::LoadMathExpression, {str.begin(), str.end()} };
@@ -335,7 +335,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				version->types_code_names[in[0]] :
 				"s" + (std::to_string(in[0] - version->types_code_names.size())));
 			auto arr_size_as_bin = version->literal_decoding_functions.at(0).func(&in[1]);
-			str += " v" + std::to_string(temp->vars_at_id.back()) + '[';
+			str += " v" + std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value) + '[';
 			str.insert(str.end(), arr_size_as_bin.begin(), arr_size_as_bin.end());
 			str += ']';
 
@@ -358,7 +358,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				"s" + (std::to_string(in[0] - version->types_code_names.size())));
 			str += type;
 			auto arr_size_as_bin = version->literal_decoding_functions.at(0).func(&in[1]);
-			str += " v" + std::to_string(temp->vars_at_id.back()) + '[';
+			str += " v" + std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value) + '[';
 			str.insert(str.end(), arr_size_as_bin.begin(), arr_size_as_bin.end());
 			str += "] = " + type + "[]";
 
@@ -468,7 +468,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				version->types_code_names[in[0]] :
 				"s" + (std::to_string(in[0] - version->types_code_names.size()))) 
 				+ " v"
-				+ std::to_string(temp->vars_at_id.back());
+				+ std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value);
 			temp->vars_at_id.at(0)++;
 			temp->uniforms_types.push_back(in[0]);
 
@@ -492,7 +492,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 				version->types_code_names[in[0]] :
 				"s" + (std::to_string(in[0] - version->types_code_names.size())))
 				+ " v"
-				+ std::to_string(temp->vars_at_id.back()) + '[' + arr_size + ']';
+				+ std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value) + '[' + arr_size + ']';
 			temp->vars_at_id.at(0)++;
 			temp->uniforms_types.push_back(in[0]);
 
@@ -511,7 +511,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		{
 			temp->write_target = Temp::WriteTarget::Common;
 			std::string str = "uniform " + version->types_code_names.at(in[0]) 
-				+ " v" + std::to_string(temp->vars_at_id.back());
+				+ " v" + std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value);
 
 			temp->vars_at_id.at(0)++;
 			temp->uniforms_types.push_back(in[0]);

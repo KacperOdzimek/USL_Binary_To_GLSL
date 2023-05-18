@@ -37,7 +37,12 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 	}
 
 	if (owning_task_temp != nullptr && temp->file_type == Temp::FileType::Library)
+	{
 		temp->FuncCounter = owning_task_temp->FuncCounter;
+		temp->variable_id_shift_value = owning_task_temp->vars_at_id.at(0);
+		for (auto& ipv : owning_task_temp->cached_imported_vars)
+			temp->variable_id_shift_value += ipv.count;
+	}
 
 	std::vector<uint8_t> common;
 	std::string glsl_version = "#version 330\n";

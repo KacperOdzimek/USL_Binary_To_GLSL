@@ -118,6 +118,7 @@ struct Node
 					r_type = ReturnType(temp->vertex_vars_types.at(*iterator - 128));
 				else
 					r_type = ReturnType(temp->temp_vars_types.at(*iterator - 128 + offset));
+				//Vertex layout structure reconstruction from it's elements
 				if (*iterator - 128 + offset < 0)
 				{
 					name = 's' + std::to_string(temp->vertex_layout_type - version->types_code_names.size()) + '(';
@@ -125,7 +126,7 @@ struct Node
 						name += 'i' + std::to_string(i) + (i + 1 != temp->vertex_variables ? ',' : ')');
 				}
 				else
-					name = "v" + std::to_string(*iterator - 128 + offset);
+					name = "v" + std::to_string(*iterator - 128 + offset + temp->variable_id_shift_value);
 			}
 			var_out:
 			content = std::vector<uint8_t>(name.begin(), name.end());
