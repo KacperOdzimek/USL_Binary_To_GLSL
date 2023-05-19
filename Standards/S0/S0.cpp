@@ -275,7 +275,6 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			else
 			{
 				temp->temp_vars_types.push_back(in[0]);
-				std::string str;
 				str += ((in[0] < version->types_code_names.size()) ?
 					version->types_code_names[in[0]] :
 					"s" + (std::to_string(in[0] - version->types_code_names.size())));
@@ -401,7 +400,11 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			temp->deepness = 1;
 			temp->vars_at_id.push_back(temp->vars_at_id.back());
 			temp->function_return_types.push_back(ReturnType(in[0]));
-			std::string str = version->types_code_names.at(in[0]) + " f" + std::to_string(temp->FuncCounter);
+			std::string str = 
+				((in[0] < version->types_code_names.size()) ?
+				version->types_code_names[in[0]] :
+				"s" + (std::to_string(in[0] - version->types_code_names.size()))) 
+				+ " f" + std::to_string(temp->FuncCounter);
 			temp->FuncCounter++;
 			return { binary_to_glsl_conversion_exception::FunctionHeader, {str.begin(), str.end()} };
 		}	

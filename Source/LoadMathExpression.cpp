@@ -8,7 +8,7 @@ struct Node
 {
 	enum class Type
 	{
-		Variable, BasicMathOperator, Literal, Function, VecConstructor, GetOperator, ArrayGet, MatrixGet
+		Variable, BasicMathOperator, Literal, Function, VecConstructor, GetOperator, ArrayGet, MatrixGet, StructConstructor
 	} type = Type::Literal;
 
 	ReturnType r_type = ReturnType::Other;
@@ -18,8 +18,18 @@ struct Node
 	Node* upper = nullptr;
 	Node(uint8_t*& iterator, int& next_owned, const StandardVersion* version, Temp* temp)
 	{
+		//Struct Constructor
+		if (*iterator == 32)
+		{
+			type = Type::StructConstructor;
+			uint8_t id = *(++iterator);
+			std::string str = "s" + std::to_string(id) + '(';
+			content.insert(content.end(), str.begin(), str.end());
+			next_owned = temp->structs.at(id).size();
+			iterator += 1;
+		}
 		//Operator
-		if (*iterator < 32)
+		else if (*iterator < 32)
 		{
 			type = *iterator < 4 ? Type::BasicMathOperator : Type::VecConstructor;
 			switch (*iterator)
@@ -349,6 +359,18 @@ std::vector<uint8_t> LoadMathExpression(uint8_t*& iterator, const StandardVersio
 			}
 			call.push_back(')');
 			return { call, n->r_type };
+		}
+		else if (n->type == Node::Type::StructConstructor)
+		{
+			std::vector<uint8_t> str = n->content;
+
+			for (int i = 0; i < n->owned.size(); i++)
+			{
+				str.insert(str.end(), n->owned.at(i)->content.begin(), n->owned.at(i)->content.end());
+				str.push_back(i == n->owned.size() - 1 ? ')' : ',');
+			}
+
+			return { str, ReturnType::Struct };
 		}
 		else if (n->type == Node::Type::BasicMathOperator)
 		{
