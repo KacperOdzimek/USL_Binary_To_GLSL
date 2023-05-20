@@ -244,6 +244,32 @@ void TranslationTask::Start(void* source, int size, Temp* owning_task_temp)
 			iterator += name_size + 1;
 			break;
 		}
+		case binary_to_glsl_conversion_exception::MacroCaseWithExp:
+		{
+			int exp_size = *(iterator);
+			decltype(iterator) exp_begin = iterator;
+			iterator += exp_size + 1;
+
+			std::string _case;
+			int name_size = *(iterator++);
+			_case.insert(_case.end(), iterator, iterator + name_size);
+
+			if (_case == "GLSL")
+			{
+				exception_result = LoadMathExpression(exp_begin, version.get(), temp);
+				exception_result.push_back(';');
+			}
+
+			iterator += name_size;
+
+			break;
+		}
+		case binary_to_glsl_conversion_exception::MacroCaseWithText:
+		{
+			int name_size = *(iterator);
+			iterator += name_size + 1;
+			break;
+		}
 		}
 
 		write_target->insert(write_target->end(), exception_result.begin(), exception_result.end());

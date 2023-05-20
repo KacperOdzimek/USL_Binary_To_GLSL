@@ -122,7 +122,8 @@ struct Node
 					goto var_out;
 				}
 
-				if (temp->shader_type == Temp::ShaderType::VertexShader && temp->context == Temp::Context::Shader)
+				if (temp->shader_type == Temp::ShaderType::VertexShader && 
+					(temp->context == Temp::Context::Shader || temp->context == Temp::Context::MacroInShader))
 					offset = -1;
 				if (*iterator - 128 == 0 && temp->shader_type == Temp::ShaderType::VertexShader)
 					r_type = ReturnType(temp->vertex_vars_types.at(*iterator - 128));

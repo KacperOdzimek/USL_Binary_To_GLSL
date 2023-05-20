@@ -153,7 +153,13 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		[](std::vector<uint8_t>& in, Temp* temp)
 		-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
-			std::string str = (temp->context == Temp::Context::StructDeclaration) ? "};" : "}";
+			std::string str;
+			switch (temp->context)
+			{
+			case Temp::Context::MacroInShader: case Temp::Context::MacroOutsideShader: break;
+			case Temp::Context::StructDeclaration: str = "};"; break;
+			default: str = "}"; break;
+			}
 
 			temp->vars_at_id.erase(temp->vars_at_id.end() - 1);
 			if (temp->vars_at_id.size() == 0) temp->vars_at_id.push_back(0);
@@ -587,6 +593,48 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			return { binary_to_glsl_conversion_exception::None, {str.begin(), str.end()} };
 		}
 	});
+
+	//macro
+	version->glsl_signatures_alternatives.push_back({ false, 1,
+	[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			if (temp->context == Temp::Context::Shader)
+				temp->context = Temp::Context::MacroInShader;
+			else
+				temp->context = Temp::Context::MacroOutsideShader;
+
+			std::string str = ((in[0] < version->types_code_names.size()) ?
+				version->types_code_names[in[0]] :
+				"s" + (std::to_string(in[0] - version->types_code_names.size())));
+			str += " v" + std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value) + '=';
+
+			return { temp->file_type == Temp::FileType::Library ?
+				binary_to_glsl_conversion_exception::SkipName :
+				binary_to_glsl_conversion_exception::None, 
+				{str.begin(), str.end()} };
+		}
+		});
+
+	//macro case with expression
+	version->glsl_signatures_alternatives.push_back({ false, 0,
+	[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			std::string str;
+			return { binary_to_glsl_conversion_exception::MacroCaseWithExp, {str.begin(), str.end()} };
+		}
+		});
+
+	//macro case with text
+	version->glsl_signatures_alternatives.push_back({ false, 0,
+	[version](std::vector<uint8_t>& in, Temp* temp)
+		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
+		{
+			std::string str;
+			return { binary_to_glsl_conversion_exception::MacroCaseWithText, {str.begin(), str.end()} };
+		}
+		});
 
 	//FinishPrimitive
 	version->glsl_signatures_alternatives.push_back({ true , 0,

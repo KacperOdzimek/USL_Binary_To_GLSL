@@ -5,7 +5,7 @@ struct Temp
 {
 	enum class Context
 	{
-		GlobalScope, Shader, CustomFunction, StructDeclaration
+		GlobalScope, Shader, CustomFunction, StructDeclaration, MacroInShader, MacroOutsideShader
 	};
 
 	enum class ShaderType
