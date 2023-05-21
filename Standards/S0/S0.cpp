@@ -156,7 +156,8 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			std::string str;
 			switch (temp->context)
 			{
-			case Temp::Context::MacroInShader: case Temp::Context::MacroOutsideShader: break;
+			case Temp::Context::MacroInShader:		temp->context = Temp::Context::Shader;		break;
+			case Temp::Context::MacroOutsideShader: temp->context = Temp::Context::GlobalScope; break;
 			case Temp::Context::StructDeclaration: str = "};"; break;
 			default: str = "}"; break;
 			}
