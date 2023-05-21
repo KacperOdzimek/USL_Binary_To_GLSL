@@ -153,6 +153,13 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		[](std::vector<uint8_t>& in, Temp* temp)
 		-> std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
 		{
+			if (temp->context != Temp::Context::MacroInShader && temp->context != Temp::Context::MacroOutsideShader)
+			{
+				temp->vars_at_id.erase(temp->vars_at_id.end() - 1);
+				if (temp->vars_at_id.size() == 0) temp->vars_at_id.push_back(0);
+				temp->is_struct.resize(temp->vars_at_id.back());
+			}
+
 			std::string str;
 			switch (temp->context)
 			{
@@ -162,13 +169,10 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			default: str = "}"; break;
 			}
 
-			temp->vars_at_id.erase(temp->vars_at_id.end() - 1);
-			if (temp->vars_at_id.size() == 0) temp->vars_at_id.push_back(0);
-			temp->is_struct.resize(temp->vars_at_id.back());
-
 			temp->deepness -= 1;
 			if (temp->deepness == 0)
 			{
+				if (temp->file_type != Temp::FileType::Library)
 				temp->temp_vars_types.clear();
 				temp->context = Temp::Context::GlobalScope;
 			}
@@ -595,7 +599,7 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 		}
 	});
 
-	//macro
+	//using macro ?t ?n
 	version->glsl_signatures_alternatives.push_back({ false, 1,
 	[version](std::vector<uint8_t>& in, Temp* temp)
 		->std::pair<binary_to_glsl_conversion_exception, std::vector<char>>
@@ -605,10 +609,16 @@ std::unique_ptr<StandardVersion> Standards::S0Create()
 			else
 				temp->context = Temp::Context::MacroOutsideShader;
 
+			temp->deepness++;
+			temp->temp_vars_types.push_back(in[0]);
+			temp->is_struct.push_back(in[0] >= version->types_code_names.size());
+
 			std::string str = ((in[0] < version->types_code_names.size()) ?
 				version->types_code_names[in[0]] :
 				"s" + (std::to_string(in[0] - version->types_code_names.size())));
 			str += " v" + std::to_string(temp->vars_at_id.back() + temp->variable_id_shift_value) + '=';
+
+			temp->vars_at_id.back()++;
 
 			return { temp->file_type == Temp::FileType::Library ?
 				binary_to_glsl_conversion_exception::SkipName :
